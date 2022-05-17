@@ -106,8 +106,3 @@ boxplot(pct_carrier_delay ~ airline, data=airline_stats, ylim=c(0, 50))
 ```{r}
 ggplot(data=airline_stats, aes(airline, pct_carrier_delay)) + ylim(0, 50) + geom_violin() + labs(x='', y='Daily % of Delayed Flights')
 ```
-
-```{r}
-ggplot(subset(kc_tax0, ZipCode %in% c(98188, 98105, 98108, 98126)), aes(x=SqFtTotLiving, y=TaxAssessedValue)) + stat_binhex(color='white') + theme_bw() + scale_fill_gradient(low='white', high='blue') + labs(x='Finished Square Feet', y='Tax-Assessed Value') + facet_wrap('ZipCode')
-```
-
