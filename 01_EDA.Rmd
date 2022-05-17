@@ -1,0 +1,113 @@
+---
+title: "01_EDA"
+output: html_document
+date: '2022-05-17'
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+state <- read.csv('./data/state.csv')
+```
+
+
+```{r}
+mean(state[['Population']])
+```
+
+```{r}
+median(state[['Population']])
+```
+
+```{r}
+weighted.mean(state[['Murder.Rate']], w=state[['Population']])
+```
+
+```{r}
+library('matrixStats')
+```
+
+```{r}
+weightedMedian(state[['Murder.Rate']], w=state[['Population']])
+```
+
+```{r}
+sd(state[['Population']])
+```
+
+```{r}
+IQR(state[['Population']])
+```
+
+```{r}
+mad(state[['Population']])
+```
+
+```{r}
+quantile(state[['Murder.Rate']], p=c(.05, .25, .5, .75, .95))
+```
+
+```{r}
+boxplot(state[['Population']]/1000000, ylab='Population (millions)')
+```
+
+```{r}
+breaks <- seq(from=min(state[['Population']]),to=max(state[['Population']]), length=11)
+pop_freq <- cut(state[['Population']], breaks=breaks,right=TRUE, include.lowest=TRUE)
+table(pop_freq)
+```
+
+```{r}
+hist(state[['Population']], breaks=breaks)
+```
+
+```{r}
+hist(state[['Murder.Rate']], freq=FALSE)
+lines(density(state[['Murder.Rate']]), lwd=3, col='blue')
+```
+
+```{r}
+dfw <- read.csv('./data/dfw_airline.csv')
+barplot(as.matrix(dfw) / 6, cex.axis=0.8, cex.names=0.7, xlab='Cause of delay', ylab='Count')
+```
+
+```{r}
+sp500_px <- read.csv('./data/sp500_data.csv.gz')
+sp500_sym <- read.csv('./data/sp500_sectors.csv')
+etfs <- sp500_px[row.names(sp500_px) > '2012-07-01',sp500_sym[sp500_sym$sector == 'etf', 'symbol']]
+library(corrplot)
+corrplot(cor(etfs), method='ellipse')
+```
+
+plot(telecom$T, telecom$VZ, xlab='ATT (T)', ylab='Verizon (VZ)')
+
+```{r}
+kc_tax <- read.csv('./data/kc_tax.csv.gz')
+kc_tax0 <- subset(kc_tax, TaxAssessedValue < 750000 & SqFtTotLiving > 100 & SqFtTotLiving < 3500)
+nrow(kc_tax0)
+```
+
+```{r}
+library(ggplot2)
+ggplot(kc_tax0, (aes(x=SqFtTotLiving, y=TaxAssessedValue))) + stat_binhex(color='white') + theme_bw() + scale_fill_gradient(low='white', high='black') + labs(x='Finished Square Feet', y='Tax-Assessed Value')
+```
+
+```{r}
+library(descr)
+lc_loans <- read.csv('./data/lc_loans.csv')
+x_tab <- CrossTable(lc_loans$grade, lc_loans$status, prop.c=FALSE, prop.chisq=FALSE, prop.t=FALSE)
+```
+
+```{r}
+airline_stats <- read.csv('./data/airline_stats.csv')
+boxplot(pct_carrier_delay ~ airline, data=airline_stats, ylim=c(0, 50))
+```
+
+```{r}
+ggplot(data=airline_stats, aes(airline, pct_carrier_delay)) + ylim(0, 50) + geom_violin() + labs(x='', y='Daily % of Delayed Flights')
+```
+
+```{r}
+ggplot(subset(kc_tax0, ZipCode %in% c(98188, 98105, 98108, 98126)), aes(x=SqFtTotLiving, y=TaxAssessedValue)) + stat_binhex(color='white') + theme_bw() + scale_fill_gradient(low='white', high='blue') + labs(x='Finished Square Feet', y='Tax-Assessed Value') + facet_wrap('ZipCode')
+```
+
