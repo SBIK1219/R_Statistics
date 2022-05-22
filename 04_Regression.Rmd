@@ -1,0 +1,146 @@
+---
+title: "04_Regression"
+output: html_document
+date: '2022-05-21'
+---
+
+```{r}
+library(MASS)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(splines)
+library(mgcv)
+```
+
+```{r}
+lung <- read.csv('./data/LungDisease.csv')
+house <- read.csv('./data/house_sales.csv', sep='\t')
+```
+
+```{r}
+plot(lung$Exposure, lung$PEFR, xlab="Exposure", ylab="PEFR")
+```
+
+```{r}
+model <- lm(PEFR ~ Exposure, data=lung)
+model
+```
+
+```{r}
+plot(lung$Exposure, lung$PEFR, xlab="Exposure", ylab="PEFR", ylim=c(300,450), type="n", xaxs="i")
+abline(a=model$coefficients[1], b=model$coefficients[2], col="blue", lwd=2)
+text(x=.3, y=model$coefficients[1], labels=expression("b"[0]),  adj=0, cex=1.5)
+x <- c(7.5, 17.5)
+y <- predict(model, newdata=data.frame(Exposure=x))
+segments(x[1], y[2], x[2], y[2] , col="red", lwd=2, lty=2)
+segments(x[1], y[1], x[1], y[2] , col="red", lwd=2, lty=2)
+text(x[1], mean(y), labels=expression(Delta~Y), pos=2, cex=1.5)
+text(mean(x), y[2], labels=expression(Delta~X), pos=1, cex=1.5)
+text(mean(x), 400, labels=expression(b[1] == frac(Delta ~ Y, Delta ~ X)), cex=1.5)
+```
+
+```{r}
+fitted <- predict(model)
+resid <- residuals(model)
+```
+
+```{r}
+lung1 <- lung %>%
+  mutate(Fitted=fitted,
+         positive = PEFR>Fitted) %>%
+  group_by(Exposure, positive) %>%
+  summarize(PEFR_max = max(PEFR), 
+            PEFR_min = min(PEFR),
+            Fitted = first(Fitted), 
+            .groups='keep') %>%
+  ungroup() %>%
+  mutate(PEFR = ifelse(positive, PEFR_max, PEFR_min)) %>%
+  arrange(Exposure)
+
+plot(lung$Exposure, lung$PEFR, xlab="Exposure", ylab="PEFR")
+abline(a=model$coefficients[1], b=model$coefficients[2], col="blue", lwd=2)
+segments(lung1$Exposure, lung1$PEFR, lung1$Exposure, lung1$Fitted, col="red", lty=3)
+```
+
+```{r}
+print(head(house[, c('AdjSalePrice', 'SqFtTotLiving', 'SqFtLot', 'Bathrooms', 
+               'Bedrooms', 'BldgGrade')]))
+```
+
+```{r}
+house_lm <- lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + Bathrooms + 
+                 Bedrooms + BldgGrade,  
+               data=house, na.action=na.omit)
+
+house_lm
+```
+
+```{r}
+summary(house_lm)
+```
+
+```{r}
+house_full <- lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + Bathrooms + 
+                   Bedrooms + BldgGrade + PropertyType + NbrLivingUnits + 
+                   SqFtFinBasement + YrBuilt + YrRenovated + NewConstruction,
+                 data=house, na.action=na.omit)
+
+## Code snippet 4.8
+step_lm <- stepAIC(house_full, direction="both")
+step_lm
+```
+
+```{r}
+lm(AdjSalePrice ~  Bedrooms, data=house)
+```
+
+```{r}
+house$Year = year(house$DocumentDate)
+house$Weight = house$Year - 2005
+
+house_wt <- lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + Bathrooms + 
+                 Bedrooms + BldgGrade,
+               data=house, weight=Weight, na.action=na.omit)
+round(cbind(house_lm=house_lm$coefficients, 
+            house_wt=house_wt$coefficients), digits=3)
+```
+
+```{r}
+head(house[, 'PropertyType'])
+```
+
+```{r}
+prop_type_dummies <- model.matrix(~PropertyType -1, data=house)
+head(prop_type_dummies)
+```
+
+```{r}
+lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + Bathrooms + 
+     Bedrooms +  BldgGrade + PropertyType, data=house)
+```
+
+```{r}
+table(house$ZipCode)
+```
+
+```{r}
+zip_groups <- house %>%
+  mutate(resid = residuals(house_lm)) %>%
+  group_by(ZipCode) %>%
+  summarize(med_resid = median(resid),
+            cnt = n()) %>%
+  # sort the zip codes by the median residual
+  arrange(med_resid) %>%
+  mutate(cum_cnt = cumsum(cnt),
+         ZipGroup = factor(ntile(cum_cnt, 5)))
+house <- house %>%
+  left_join(select(zip_groups, ZipCode, ZipGroup), by='ZipCode')
+```
+
+```{r}
+table(zip_groups[c('ZipGroup')])
+```
+
+
