@@ -143,4 +143,176 @@ house <- house %>%
 table(zip_groups[c('ZipGroup')])
 ```
 
+```{r}
+step_lm$coefficients
+```
+
+```{r}
+update(step_lm, . ~ . -SqFtTotLiving - SqFtFinBasement - Bathrooms)
+```
+
+```{r}
+lm(AdjSalePrice ~  SqFtTotLiving + SqFtLot + 
+     Bathrooms + Bedrooms + 
+     BldgGrade + PropertyType + ZipGroup,
+   data=house, na.action=na.omit)
+```
+
+```{r}
+lm(AdjSalePrice ~  SqFtTotLiving*ZipGroup + SqFtLot + 
+     Bathrooms + Bedrooms + 
+     BldgGrade + PropertyType,
+   data=house, na.action=na.omit)
+```
+
+```{r}
+house_98105 <- house[house$ZipCode == 98105,]
+lm_98105 <- lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + Bathrooms + 
+                 Bedrooms + BldgGrade, data=house_98105)
+```
+
+```{r}
+summary(lm_98105)
+```
+
+```{r}
+sresid <- rstandard(lm_98105)
+idx <- order(sresid, decreasing=FALSE)
+sresid[idx[1]]
+resid(lm_98105)[idx[1]]
+```
+
+```{r}
+house_98105[idx[1], c('AdjSalePrice', 'SqFtTotLiving', 'SqFtLot',
+                      'Bathrooms', 'Bedrooms', 'BldgGrade')]
+```
+
+```{r}
+seed <- 11
+set.seed(seed)
+x <- rnorm(25)
+y <- -x/5 + rnorm(25)
+x[1] <- 8
+y[1] <- 8
+
+plot(x, y, xlab='', ylab='', pch=16)
+model <- lm(y~x)
+abline(a=model$coefficients[1], b=model$coefficients[2], col="blue", lwd=3)
+model <- lm(y[-1]~x[-1])
+abline(a=model$coefficients[1], b=model$coefficients[2], col="red", lwd=3, lty=2)
+```
+
+```{r}
+std_resid <- rstandard(lm_98105)
+cooks_D <- cooks.distance(lm_98105)
+hat_values <- hatvalues(lm_98105)
+plot(subset(hat_values, cooks_D > 0.08), subset(std_resid, cooks_D > 0.08), 
+     xlab='hat_values', ylab='std_resid',
+     cex=10*sqrt(subset(cooks_D, cooks_D > 0.08)), pch=16, col='lightgrey')
+points(hat_values, std_resid, cex=10*sqrt(cooks_D))
+abline(h=c(-2.5, 2.5), lty=2)
+```
+
+```{r}
+lm_98105_inf <- lm(AdjSalePrice ~ SqFtTotLiving + SqFtLot + 
+                     Bathrooms +  Bedrooms + BldgGrade,
+                   subset=cooks_D<.08, data=house_98105)
+```
+
+```{r}
+df <- data.frame(
+  resid = residuals(lm_98105),
+  pred = predict(lm_98105))
+
+graph <- ggplot(df, aes(pred, abs(resid))) +
+  geom_point() +
+  geom_smooth(formula=y~x, method='loess') +
+  scale_x_continuous(labels = function(x) format(x, scientific = FALSE)) +
+  theme_bw()
+graph
+```
+
+```{r}
+hist(std_resid, main='')
+```
+
+```{r}
+terms <- predict(lm_98105, type='terms')
+partial_resid <- resid(lm_98105) + terms
+
+df <- data.frame(SqFtTotLiving = house_98105[, 'SqFtTotLiving'],
+                 Terms = terms[, 'SqFtTotLiving'],
+                 PartialResid = partial_resid[, 'SqFtTotLiving'])
+graph <- ggplot(df, aes(SqFtTotLiving, PartialResid)) +
+  geom_point(shape=1) + scale_shape(solid = FALSE) +
+  geom_smooth(linetype=2, formula=y~x, method='loess') + 
+  geom_line(aes(SqFtTotLiving, Terms)) + 
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+graph
+```
+
+```{r}
+lm_poly <- lm(AdjSalePrice ~  poly(SqFtTotLiving, 2) + SqFtLot + 
+                BldgGrade +  Bathrooms +  Bedrooms,
+              data=house_98105)
+terms <- predict(lm_poly, type='terms')
+partial_resid <- resid(lm_poly) + terms
+lm_poly
+```
+
+```{r}
+df <- data.frame(SqFtTotLiving = house_98105[, 'SqFtTotLiving'],
+                 Terms = terms[, 1],
+                 PartialResid = partial_resid[, 1])
+graph <- ggplot(df, aes(SqFtTotLiving, PartialResid)) +
+  geom_point(shape=1) + scale_shape(solid = FALSE) +
+  geom_smooth(linetype=2, formula=y~x, method='loess') + 
+  geom_line(aes(SqFtTotLiving, Terms)) +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+graph
+```
+
+```{r}
+knots <- quantile(house_98105$SqFtTotLiving, p=c(.25, .5, .75))
+lm_spline <- lm(AdjSalePrice ~ bs(SqFtTotLiving, knots=knots, degree=3) +  SqFtLot +  
+                  Bathrooms + Bedrooms + BldgGrade,  data=house_98105)
+lm_spline
+
+terms1 <- predict(lm_spline, type='terms')
+partial_resid1 <- resid(lm_spline) + terms1
+```
+
+```{r}
+df1 <- data.frame(SqFtTotLiving = house_98105[, 'SqFtTotLiving'],
+                 Terms = terms1[, 1],
+                 PartialResid = partial_resid1[, 1])
+
+graph <- ggplot(df1, aes(SqFtTotLiving, PartialResid)) +
+  geom_point(shape=1) + scale_shape(solid = FALSE) +
+  geom_smooth(linetype=2, formula=y~x, method='loess') + 
+  geom_line(aes(SqFtTotLiving, Terms)) +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+graph
+```
+
+```{r}
+lm_gam <- gam(AdjSalePrice ~ s(SqFtTotLiving) + SqFtLot + 
+              Bathrooms +  Bedrooms + BldgGrade, 
+              data=house_98105)
+terms <- predict.gam(lm_gam, type='terms')
+partial_resid <- resid(lm_gam) + terms
+lm_gam
+```
+
+```{r}
+df <- data.frame(SqFtTotLiving = house_98105[, 'SqFtTotLiving'],
+                 Terms = terms[, 5],
+                 PartialResid = partial_resid[, 5])
+graph <- ggplot(df, aes(SqFtTotLiving, PartialResid)) +
+  geom_point(shape=1) + scale_shape(solid = FALSE) +
+  geom_smooth(linetype=2, formula=y~x, method='loess') + 
+  geom_line(aes(SqFtTotLiving, Terms)) +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+graph
+```
 
