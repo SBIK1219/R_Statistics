@@ -1,0 +1,15 @@
+library(klaR)
+library(MASS)
+library(dplyr)
+library(ggplot2)
+library(FNN)
+library(mgcv)
+library(rpart)
+
+loan3000  <- read.csv('./data/loan3000.csv', stringsAsFactors=TRUE)
+loan_data <-  read.csv('./data/loan_data.csv.gz', stringsAsFactors=TRUE)
+full_train_set <-  read.csv('./data/full_train_set.csv.gz', stringsAsFactors=TRUE)
+
+loan3000$outcome <- ordered(loan3000$outcome, levels=c('paid off', 'default'))
+loan_data$outcome <- ordered(loan_data$outcome, levels=c('paid off', 'default'))
+full_train_set$outcome <- ordered(full_train_set$outcome, levels=c('paid off', 'default'))
