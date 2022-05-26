@@ -105,3 +105,79 @@ graph <- ggplot(data=lda_df, aes(x=borrower_score, y=payment_inc_ratio, color=pr
 graph
 ```
 
+```{r}
+logistic_model <- glm(outcome ~ payment_inc_ratio + purpose_ + 
+                        home_ + emp_len_ + borrower_score,
+                      data=loan_data, family='binomial')
+logistic_model
+summary(logistic_model)
+
+p <- seq(from=0.01, to=.99, by=.01)
+df <- data.frame(p = p,
+                 logit = log(p/(1-p)),
+                 odds = p/(1-p))
+
+graph <- ggplot(data=df, aes(x=p, y=logit)) +
+  geom_line() +
+  labs(x = 'p', y='logit(p)') +
+  theme_bw()
+graph
+```
+
+```{r}
+pred <- predict(logistic_model)
+summary(pred)
+```
+
+```{r}
+prob <- 1/(1 + exp(-pred))
+summary(prob)
+```
+
+```{r}
+graph <- ggplot(data=df, aes(x=logit, y=odds)) +
+  geom_line() +
+  labs(x='log(odds ratio)', y='odds ratio') +
+  coord_cartesian(xlim=c(0, 5), ylim=c(1, 100)) +
+  theme_bw()
+graph
+```
+
+```{r}
+logistic_gam <- gam(outcome ~ s(payment_inc_ratio) + purpose_ + 
+                      home_ + emp_len_ + s(borrower_score),
+                    data=loan_data, family='binomial')
+logistic_gam
+```
+
+```{r}
+terms <- predict(logistic_gam, type='terms')
+partial_resid <- resid(logistic_gam) + terms
+df <- data.frame(payment_inc_ratio = loan_data[, 'payment_inc_ratio'],
+                 terms = terms[, 's(payment_inc_ratio)'],
+                 partial_resid = partial_resid[, 's(payment_inc_ratio)'])
+
+graph <- ggplot(df, aes(x=payment_inc_ratio, y=partial_resid, solid = FALSE)) +
+  geom_point(shape=46, alpha=0.4) +
+  geom_line(aes(x=payment_inc_ratio, y=terms), 
+            color='red', alpha=0.5, size=1.5) +
+  labs(y='Partial Residual') +
+  coord_cartesian(xlim=c(0, 25)) +
+  theme_bw()
+graph
+```
+
+```{r}
+df <- data.frame(payment_inc_ratio = loan_data[, 'payment_inc_ratio'],
+                 terms = 1/(1 + exp(-terms[, 's(payment_inc_ratio)'])),
+                 partial_resid = 1/(1 + exp(-partial_resid[, 's(payment_inc_ratio)'])))
+
+graph <- ggplot(df, aes(x=payment_inc_ratio, y=partial_resid, solid = FALSE)) +
+  geom_point(shape=46, alpha=0.4) +
+  geom_line(aes(x=payment_inc_ratio, y=terms), 
+            color='red', alpha=0.5, size=1.5) +
+  labs(y='Partial Residual') +
+  coord_cartesian(xlim=c(0, 25)) +
+  theme_bw()
+graph
+```
