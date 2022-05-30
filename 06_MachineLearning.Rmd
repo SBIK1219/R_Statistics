@@ -222,3 +222,63 @@ graph <- ggplot(data=impure, aes(x=p, y=impurity, linetype=type, color=type)) +
 graph
 ```
 
+```{r}
+rf <- randomForest(outcome ~ borrower_score + payment_inc_ratio,
+                   data=loan3000)
+rf
+```
+
+```{r}
+error_df = data.frame(error_rate=rf$err.rate[,'OOB'],
+                      num_trees=1:rf$ntree)
+graph <- ggplot(error_df, aes(x=num_trees, y=error_rate)) +
+  geom_line()  +
+  theme_bw()
+graph
+```
+
+```{r}
+pred <- predict(rf, prob=TRUE)
+rf_df <- cbind(loan3000, pred = pred)
+
+graph <- ggplot(data=rf_df, aes(x=borrower_score, y=payment_inc_ratio, 
+                       shape=pred, color=pred, size=pred)) +
+  geom_point(alpha=.8) +
+  scale_color_manual(values = c('paid off'='#b8e186', 'default'='#d95f02')) +
+  scale_shape_manual(values = c('paid off'=0, 'default'=1)) +
+  scale_size_manual(values = c('paid off'=0.5, 'default'=2)) +
+
+  scale_x_continuous(expand=c(0,0)) + 
+  scale_y_continuous(expand=c(0,0)) + 
+  coord_cartesian(ylim=c(0, 20)) +
+  guides(color = guide_legend(override.aes = list(size=2))) +
+  theme_bw()
+graph
+```
+
+```{r}
+rf_all <- randomForest(outcome ~ ., data=loan_data, importance=TRUE)
+rf_all
+
+varImpPlot(rf_all, type=1)
+
+imp1 <- importance(rf_all, type=1)
+imp2 <- importance(rf_all, type=2)
+idx <- order(imp1[,1])
+nms <- factor(row.names(imp1)[idx], levels=row.names(imp1)[idx])
+imp <- data.frame(Predictor = rep(nms, 2),
+                  Importance = c(imp1[idx, 1], imp2[idx, 1]),
+                  Type = rep( c('Accuracy Decrease', 'Gini Decrease'), rep(nrow(imp1), 2)))
+```
+
+```{r}
+graph <- ggplot(imp) + 
+  geom_point(aes(y=Predictor, x=Importance), size=2, stat="identity") + 
+  facet_wrap(~Type, ncol=1, scales="free_x") + 
+  theme(
+    panel.grid.major.x = element_blank() ,
+    panel.grid.major.y = element_line(linetype=3, color="darkgray") ) +
+  theme_bw()
+graph
+```
+
