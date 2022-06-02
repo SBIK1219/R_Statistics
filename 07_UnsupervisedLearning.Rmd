@@ -1,0 +1,72 @@
+---
+title: "07_UnsupervisedLearning"
+output: html_document
+date: '2022-06-02'
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(ellipse)
+library(mclust)
+library(cluster)
+library(ca)
+```
+
+```{r}
+sp500_px <- read.csv('./data/sp500_data.csv.gz', row.names=1)
+sp500_sym <- read.csv('./data/sp500_sectors.csv', stringsAsFactors = FALSE)
+loan_data  <- read.csv('./data/loan_data.csv.gz', stringsAsFactors=TRUE)
+loan_data$outcome <- ordered(loan_data$outcome, levels=c('paid off', 'default'))
+housetasks <- read.csv('./data/housetasks.csv', row.names=1)
+```
+
+```{r}
+oil_px <- sp500_px[, c('CVX', 'XOM')]
+pca <- princomp(oil_px)
+pca$loadings
+```
+
+```{r}
+loadings <- pca$loadings
+graph <- ggplot(data=oil_px, aes(x=CVX, y=XOM)) +
+  geom_point(alpha=.3) +
+  scale_shape_manual(values=c(46)) +
+  stat_ellipse(type='norm', level=.99, color='grey25') +
+  geom_abline(intercept = 0, slope = loadings[2,1]/loadings[1,1], color='grey25', linetype=2) +
+  geom_abline(intercept = 0, slope = loadings[2,2]/loadings[1,2],  color='grey25', linetype=2) +
+  scale_x_continuous(expand=c(0,0)) + 
+  scale_y_continuous(expand=c(0,0)) +
+  coord_cartesian(xlim=c(-3, 3), ylim=c(-3, 3)) +
+  theme_bw()
+graph
+```
+
+```{r}
+syms <- c( 'AAPL', 'MSFT', 'CSCO', 'INTC', 'CVX', 'XOM', 'SLB', 'COP',
+           'JPM', 'WFC', 'USB', 'AXP', 'WMT', 'TGT', 'HD', 'COST')
+top_sp <- sp500_px[row.names(sp500_px)>='2011-01-01', syms]
+sp_pca <- princomp(top_sp)
+par(mar=c(6,3,0,0)+.1, las=2)
+screeplot(sp_pca, main='')
+```
+
+```{r}
+loadings <- sp_pca$loadings[,1:5]
+loadings <- as.data.frame(loadings)
+loadings$Symbol <- row.names(loadings)
+loadings <- gather(loadings, 'Component', 'Weight', -Symbol)
+loadings$Color = loadings$Weight > 0
+graph <- ggplot(loadings, aes(x=Symbol, y=Weight, fill=Color)) +
+  geom_bar(stat='identity', position='identity', width=.75) + 
+  facet_grid(Component ~ ., scales='free_y') +
+  guides(fill='none') +
+  ylab('Component Loading') +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_text(angle=90, vjust=0.5))
+graph
+```
+
