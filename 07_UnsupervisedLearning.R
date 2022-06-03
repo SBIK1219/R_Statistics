@@ -85,3 +85,66 @@ graph <- ggplot(coords, aes(x=Dim1, y=Dim2, color=type, label=rownames(coords), 
   theme_bw() +
   theme(legend.position = "none") 
 graph
+
+set.seed(1010103)
+df <- sp500_px[row.names(sp500_px)>='2011-01-01', c('XOM', 'CVX')]
+km <- kmeans(df, centers=4, nstart=1)
+
+df$cluster <- factor(km$cluster)
+head(df)
+
+centers <- data.frame(cluster=factor(1:4), km$centers)
+centers
+
+graph <- ggplot(data=df, aes(x=XOM, y=CVX, color=cluster, shape=cluster)) +
+  geom_point() +
+  scale_shape_manual(values = c(1, 3, 2, 4),
+                     guide = guide_legend(override.aes=aes(size=1))) + 
+  geom_point(data=centers,  aes(x=XOM, y=CVX), size=2, stroke=2, color='black')  +
+  theme_bw() +
+  scale_x_continuous(expand=c(0,0)) + 
+  scale_y_continuous(expand=c(0,0)) +
+  coord_cartesian(xlim=c(-2, 2), ylim=c(-2.5, 2.5))
+
+graph
+
+syms <- c( 'AAPL', 'MSFT', 'CSCO', 'INTC', 'CVX', 'XOM', 'SLB', 'COP',
+           'JPM', 'WFC', 'USB', 'AXP', 'WMT', 'TGT', 'HD', 'COST')
+df <- sp500_px[row.names(sp500_px) >= '2011-01-01', syms]
+
+set.seed(10010)
+km <- kmeans(df, centers=5, nstart=10)
+
+km$size
+
+centers <- as.data.frame(t(km$centers))
+names(centers) <- paste('Cluster', 1:5)
+centers$Symbol <- row.names(centers)
+centers <- gather(centers, 'Cluster', 'Mean', -Symbol)
+
+centers$Color = centers$Mean > 0
+graph <- ggplot(centers, aes(x=Symbol, y=Mean, fill=Color)) +
+  geom_bar(stat='identity', position='identity', width=.75) + 
+  facet_grid(Cluster ~ ., scales='free_y') +
+  guides(fill='none')  +
+  ylab('Component Loading') +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_text(angle=90, vjust=0.5))
+graph
+
+pct_var <- data.frame(pct_var = 0,
+                      num_clusters=2:14)
+totalss <- kmeans(df, centers=14, nstart=50, iter.max=100)$totss
+for (i in 2:14) {
+  kmCluster <- kmeans(df, centers=i, nstart=50, iter.max = 100)
+  pct_var[i-1, 'pct_var'] <- kmCluster$betweenss / totalss
+}
+
+graph <- ggplot(pct_var, aes(x=num_clusters, y=pct_var)) +
+  geom_line() +
+  geom_point() +
+  labs(y='% Variance Explained', x='Number of Clusters') +
+  scale_x_continuous(breaks=seq(2, 14, by=2))   +
+  theme_bw()
+graph
