@@ -188,3 +188,47 @@ graph <- ggplot(pct_var, aes(x=num_clusters, y=pct_var)) +
 graph
 ```
 
+```{r}
+syms1 <- c('GOOGL', 'AMZN', 'AAPL', 'MSFT', 'CSCO', 'INTC', 'CVX', 
+           'XOM', 'SLB', 'COP', 'JPM', 'WFC', 'USB', 'AXP',
+           'WMT', 'TGT', 'HD', 'COST')
+
+df <- sp500_px[row.names(sp500_px) >= '2011-01-01', syms1]
+d <- dist(t(df))
+hcl <- hclust(d)
+```
+
+```{r}
+plot(hcl, ylab='distance', xlab='', sub='', main='')
+```
+
+```{r}
+cutree(hcl, k=4)
+```
+
+```{r}
+cluster_fun <- function(df, method)
+{
+  d <- dist(df)
+  hcl <- hclust(d, method=method)
+  tree <- cutree(hcl, k=4)
+  df$cluster <- factor(tree)
+  df$method <- method
+  return(df)
+}
+
+df0 <- sp500_px[row.names(sp500_px) >= '2011-01-01', c('XOM', 'CVX')]
+df <- rbind(cluster_fun(df0, method='single'),
+            cluster_fun(df0, method='average'),
+            cluster_fun(df0, method='complete'),
+            cluster_fun(df0, method='ward.D'))
+df$method <- ordered(df$method, c('single', 'average', 'complete', 'ward.D'))
+
+graph <- ggplot(data=df, aes(x=XOM, y=CVX, color=cluster, shape=cluster)) +
+  geom_point(alpha=0.6) +
+  scale_shape_manual(values=c(1, 3, 4, 2),
+                     guide=guide_legend(override.aes=aes(size=2))) +
+  facet_wrap( ~ method) +
+  theme_bw()
+graph
+```
