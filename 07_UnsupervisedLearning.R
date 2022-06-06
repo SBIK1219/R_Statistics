@@ -223,3 +223,53 @@ summary(mcl, parameters=TRUE)$variance[,,1]
 summary(mcl, parameters=TRUE)$variance[,,2]
 
 plot(mcl, what='BIC', ask=FALSE, cex=.75)
+
+defaults <- loan_data[loan_data$outcome=='default',]
+df <- defaults[, c('loan_amnt', 'annual_inc', 'revol_bal', 'open_acc', 'dti', 'revol_util')]
+km <- kmeans(df, centers=4, nstart=10)
+centers <- data.frame(size=km$size, km$centers) 
+print(round(centers, digits=2))
+
+df0 <- scale(df)
+km0 <- kmeans(df0, centers=4, nstart=10)
+centers0 <- scale(km0$centers, center=FALSE, scale=1/attr(df0, 'scaled:scale'))
+centers0 <- scale(centers0, center=-attr(df0, 'scaled:center'), scale=FALSE)
+centers0 <- data.frame(size=km0$size, centers0) 
+print(round(centers0, digits=2))
+
+km <- kmeans(df, centers=4, nstart=10)
+centers <- data.frame(size=km$size, km$centers) 
+round(centers, digits=2)
+
+syms <- c('GOOGL', 'AMZN', 'AAPL', 'MSFT', 'CSCO', 'INTC', 'CVX', 'XOM', 
+          'SLB', 'COP', 'JPM', 'WFC', 'USB', 'AXP', 'WMT', 'TGT', 'HD', 'COST')
+top_15 <- sp500_px[row.names(sp500_px)>='2011-01-01', syms]
+sp_pca1 <- princomp(top_15)
+
+screeplot(sp_pca1, main='')
+
+round(sp_pca1$loadings[,1:2], 3)
+
+x <- loan_data[1:5, c('dti', 'payment_inc_ratio', 'home_', 'purpose_')] %>%
+  mutate(home_=as.factor(home_), purpose_=as.factor(purpose_))
+x
+
+daisy(x, metric='gower')
+
+set.seed(301)
+df <- loan_data[sample(nrow(loan_data), 250),
+                c('dti', 'payment_inc_ratio', 'home_', 'purpose_')] %>%
+  mutate(home_=as.factor(home_), purpose_=as.factor(purpose_))
+d = daisy(df, metric='gower')
+hcl <- hclust(d)
+dnd <- as.dendrogram(hcl)
+plot(dnd, leaflab='none', ylab='distance')
+
+dnd_cut <- cut(dnd, h=.5)
+df[labels(dnd_cut$lower[[4]]),]
+
+df <- model.matrix(~ -1 + dti + payment_inc_ratio + home_ + pub_rec_zero, data=defaults)
+df0 <- scale(df)
+km0 <- kmeans(df0, centers=4, nstart=10)
+centers0 <- scale(km0$centers, center=FALSE, scale=1/attr(df0, 'scaled:scale'))
+round(scale(centers0, center=-attr(df0, 'scaled:center'), scale=FALSE), 2)
